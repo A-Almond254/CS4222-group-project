@@ -1,0 +1,382 @@
+import javax.sound.midi.*;
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import java.util.Random;
+
+public class CatastrophicPiano extends JPanel {
+
+    // Piano layout
+    private static final int NUM_OCTAVES = 4;
+    private static final int WHITE_PER_OCT = 7;
+    private static final int BLACK_PER_OCT = 5;
+
+    // Octave shifting
+    private static final int MAX_SHIFT = 23 * 12;
+    private int octaveShift = 0;
+
+    // Key storage
+    private Rectangle[] whiteKeys;
+    private Rectangle[] blackKeys;
+    private int[] whiteKeyNotes;
+    private int[] blackKeyNotes;
+
+    // MIDI
+    private Synthesizer synth;
+    private MidiChannel channel;
+
+    // Chaos behaviors
+    private static final int NORMAL = 0;
+    private static final int CRASH = 1;
+    private static final int WRONG = 2;
+    private static final int POPUP = 3;
+    private static final int SILENT = 4;
+    private static final int STICKY = 5;
+    private static final int ECHO = 6;
+    private static final int EXTRA = 7;
+    private static final int OCTSHIFT = 8;
+    private static final int RANDOMFX = 9;
+    private static final int GLITCH = 10;
+    private static final int AD = 11;
+    private static final int WARN = 12;
+
+    private int[] behavior;
+    private boolean[] stickyOn;
+
+    private Random random = new Random();
+
+    public CatastrophicPiano() {
+        setPreferredSize(new Dimension(900, 260));
+        initMidi();
+        buildKeys();
+        assignBehaviorsRandomly();   // <--- RANDOMIZED CHAOS
+
+        addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                int keyIndex = getKeyIndexAtPoint(e.getPoint());
+                if (keyIndex != -1) handleKeyPress(keyIndex);
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                int keyIndex = getKeyIndexAtPoint(e.getPoint());
+                if (keyIndex != -1) handleKeyRelease(keyIndex);
+            }
+        });
+    }
+
+    // ---------------- MIDI ----------------
+
+    private void initMidi() {
+        try {
+            synth = MidiSystem.getSynthesizer();
+            synth.open();
+            channel = synth.getChannels()[0];
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    // ---------------- KEY BUILDING ----------------
+
+    private void buildKeys() {
+        int numWhite = NUM_OCTAVES * WHITE_PER_OCT;
+        int numBlack = NUM_OCTAVES * BLACK_PER_OCT;
+
+        whiteKeys = new Rectangle[numWhite];
+        blackKeys = new Rectangle[numBlack];
+        whiteKeyNotes = new int[numWhite];
+        blackKeyNotes = new int[numBlack];
+
+        behavior = new int[numWhite + numBlack];
+        stickyOn = new boolean[numWhite + numBlack];
+
+        int whiteW = 30, whiteH = 180;
+        int blackW = 18, blackH = 110;
+
+        int x = 10;
+        int wi = 0, bi = 0;
+
+        int[] whiteOffsets = {0, 2, 4, 5, 7, 9, 11};
+        int[] blackOffsets = {1, 3, 6, 8, 10};
+
+        for (int oct = 0; oct < NUM_OCTAVES; oct++) {
+
+            for (int i = 0; i < whiteOffsets.length; i++) {
+                whiteKeys[wi] = new Rectangle(x, 50, whiteW, whiteH);
+                whiteKeyNotes[wi] = 60 + oct * 12 + whiteOffsets[i];
+                wi++;
+                x += whiteW;
+            }
+
+            int baseX = 10 + oct * WHITE_PER_OCT * whiteW;
+            int[] blackXOffsets = {
+                    whiteW - blackW / 2,
+                    2 * whiteW - blackW / 2,
+                    4 * whiteW - blackW / 2,
+                    5 * whiteW - blackW / 2,
+                    6 * whiteW - blackW / 2
+            };
+
+            for (int i = 0; i < blackOffsets.length; i++) {
+                blackKeys[bi] = new Rectangle(baseX + blackXOffsets[i], 50, blackW, blackH);
+                blackKeyNotes[bi] = 60 + oct * 12 + blackOffsets[i];
+                bi++;
+            }
+        }
+    }
+
+    // ---------------- RANDOM CHAOS ASSIGNMENT ----------------
+
+    private void assignBehaviorsRandomly() {
+        int total = behavior.length;
+
+        int[] chaos = {
+                CRASH, WRONG, POPUP, SILENT, STICKY, ECHO,
+                EXTRA, OCTSHIFT, RANDOMFX, GLITCH, AD, WARN
+        };
+
+        // Set all to normal
+        for (int i = 0; i < total; i++) behavior[i] = NORMAL;
+
+        // Randomly assign each chaotic behavior to a random key
+        for (int b : chaos) {
+            int index;
+            do {
+                index = random.nextInt(total);
+            } while (behavior[index] != NORMAL);
+            behavior[index] = b;
+        }
+    }
+
+    // ---------------- KEY LOOKUP ----------------
+
+    private int getKeyIndexAtPoint(Point p) {
+        for (int i = 0; i < blackKeys.length; i++)
+            if (blackKeys[i].contains(p)) return whiteKeys.length + i;
+
+        for (int i = 0; i < whiteKeys.length; i++)
+            if (whiteKeys[i].contains(p)) return i;
+
+        return -1;
+    }
+
+    private int getNoteForKey(int keyIndex) {
+        if (keyIndex < whiteKeys.length)
+            return whiteKeyNotes[keyIndex] + octaveShift;
+        return blackKeyNotes[keyIndex - whiteKeys.length] + octaveShift;
+    }
+
+    // ---------------- KEY PRESS LOGIC ----------------
+
+    private void handleKeyPress(int keyIndex) {
+        int b = behavior[keyIndex];
+        int note = getNoteForKey(keyIndex);
+
+        switch (b) {
+
+            case CRASH:
+                JOptionPane.showMessageDialog(this, "💀 FATAL ERROR 💀\nThe piano has crashed.");
+                System.exit(0);
+                break;
+
+            case WRONG:
+                play(random.nextInt(128));
+                break;
+
+            case POPUP:
+                spawnRandomPopups();
+                play(note);
+                break;
+
+            case SILENT:
+                break;
+
+            case STICKY:
+                if (!stickyOn[keyIndex]) {
+                    stickyOn[keyIndex] = true;
+                    play(note);
+                }
+                break;
+
+            case ECHO:
+                play(note);
+                echo(note);
+                break;
+
+            case EXTRA:
+                play(note);
+                play((note + 7) % 128);
+                play((note + 12) % 128);
+                break;
+
+            case OCTSHIFT:
+                int shifted = note + (random.nextBoolean() ? 12 : -12);
+                play(Math.max(0, Math.min(127, shifted)));
+                break;
+
+            case RANDOMFX:
+                for (int i = 0; i < 4; i++) play(random.nextInt(128));
+                break;
+
+            case GLITCH:
+                for (int i = 0; i < 6; i++) {
+                    int n = note + random.nextInt(5) - 2;
+                    play(Math.max(0, Math.min(127, n)));
+                }
+                break;
+
+            case AD:
+                spawnRandomPopup("🔥 Buy Catastrophic Piano PRO! 🔥");
+                play(note);
+                break;
+
+            case WARN:
+                spawnRandomPopup("⚠ Unstable key pressed!");
+                play(note);
+                break;
+
+            default:
+                play(note);
+        }
+    }
+
+    private void handleKeyRelease(int keyIndex) {
+        int b = behavior[keyIndex];
+        int note = getNoteForKey(keyIndex);
+
+        if (b == STICKY) {
+            stickyOn[keyIndex] = !stickyOn[keyIndex];
+            if (!stickyOn[keyIndex]) stop(note);
+        } else {
+            stop(note);
+        }
+    }
+
+    // ---------------- POPUP HELPERS ----------------
+
+    private void spawnRandomPopups() {
+        for (int i = 0; i < 5; i++) {
+            spawnRandomPopup("Random popup #" + (i + 1));
+        }
+    }
+
+    private void spawnRandomPopup(String message) {
+        JDialog dialog = new JDialog((Frame) null, "Popup", false);
+        dialog.setLayout(new BorderLayout());
+        dialog.add(new JLabel(message, SwingConstants.CENTER), BorderLayout.CENTER);
+        dialog.setSize(200, 100);
+
+        // Random screen position
+        int x = random.nextInt(800);
+        int y = random.nextInt(600);
+        dialog.setLocation(x, y);
+
+        dialog.setVisible(true);
+    }
+
+    // ---------------- SOUND HELPERS ----------------
+
+    private void play(int note) {
+        if (channel != null) channel.noteOn(note, 90);
+    }
+
+    private void stop(int note) {
+        if (channel != null) channel.noteOff(note);
+    }
+
+    private void echo(int note) {
+        Timer t = new Timer(120, null);
+        t.addActionListener(new ActionListener() {
+            int count = 0;
+            public void actionPerformed(ActionEvent e) {
+                if (count++ >= 3) t.stop();
+                else play(note);
+            }
+        });
+        t.start();
+    }
+
+    // ---------------- DRAWING ----------------
+
+    @Override
+    protected void paintComponent(Graphics g) {
+        super.paintComponent(g);
+
+        Graphics2D g2 = (Graphics2D) g;
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+        Color[] behaviorColors = {
+                new Color(255,255,255), // NORMAL
+                new Color(255,150,150), // CRASH
+                new Color(255,200,150), // WRONG
+                new Color(255,255,150), // POPUP
+                new Color(230,230,230), // SILENT
+                new Color(180,255,180), // STICKY
+                new Color(180,220,255), // ECHO
+                new Color(220,180,255), // EXTRA
+                new Color(180,255,255), // OCTSHIFT
+                new Color(255,180,220), // RANDOMFX
+                new Color(255,120,200), // GLITCH
+                new Color(255,200,120), // AD
+                new Color(255,120,120)  // WARN
+        };
+
+        // White keys
+        for (int i = 0; i < whiteKeys.length; i++) {
+            Rectangle r = whiteKeys[i];
+            int b = behavior[i];
+
+            g2.setColor(behaviorColors[b]);
+            g2.fill(r);
+
+            g2.setColor(Color.BLACK);
+            g2.draw(r);
+        }
+
+        // Black keys
+        for (int i = 0; i < blackKeys.length; i++) {
+            Rectangle r = blackKeys[i];
+            int b = behavior[whiteKeys.length + i];
+
+            g2.setColor(behaviorColors[b].darker());
+            g2.fill(r);
+
+            g2.setColor(Color.BLACK);
+            g2.draw(r);
+        }
+    }
+
+    // ---------------- OCTAVE SHIFT ----------------
+
+    public void shiftOctave(int semitones) {
+        int newShift = octaveShift + semitones;
+        if (Math.abs(newShift) <= MAX_SHIFT) octaveShift = newShift;
+    }
+
+    // ---------------- MAIN ----------------
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            CatastrophicPiano piano = new CatastrophicPiano();
+
+            JButton down = new JButton("Octave -");
+            JButton up = new JButton("Octave +");
+
+            down.addActionListener(e -> piano.shiftOctave(-12));
+            up.addActionListener(e -> piano.shiftOctave(+12));
+
+            JPanel controls = new JPanel();
+            controls.add(down);
+            controls.add(up);
+
+            JFrame frame = new JFrame("Catastrophic Piano");
+            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            frame.add(controls, BorderLayout.NORTH);
+            frame.add(piano, BorderLayout.CENTER);
+            frame.pack();
+            frame.setVisible(true);
+        });
+    }
+}
