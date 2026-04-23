@@ -1,0 +1,156 @@
+import javax.sound.midi.*;
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+
+public class Q3SolutionFourOctavePiano extends JPanel {
+
+    private static final int NUM_OCTAVES = 4;
+    private static final int WHITE_PER_OCT = 7;
+    private static final int BLACK_PER_OCT = 5;
+
+    private Rectangle[] whiteKeys;
+    private Rectangle[] blackKeys;
+    private int[] whiteKeyNotes;
+    private int[] blackKeyNotes;
+
+    private Synthesizer synth;
+    private MidiChannel channel;
+
+    public Q3SolutionFourOctavePiano() {
+        setPreferredSize(new Dimension(900, 240));
+        initMidi();
+        buildKeys();
+
+        addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                int note = getNoteAtPoint(e.getPoint());
+                if (note != -1) playNote(note);
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                int note = getNoteAtPoint(e.getPoint());
+                if (note != -1) stopNote(note);
+            }
+        });
+    }
+
+    private void initMidi() {
+        try {
+            synth = MidiSystem.getSynthesizer();
+            synth.open();
+            channel = synth.getChannels()[0];
+            channel.programChange(0);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void buildKeys() {
+        int numWhite = NUM_OCTAVES * WHITE_PER_OCT;
+        int numBlack = NUM_OCTAVES * BLACK_PER_OCT;
+
+        whiteKeys = new Rectangle[numWhite];
+        blackKeys = new Rectangle[numBlack];
+        whiteKeyNotes = new int[numWhite];
+        blackKeyNotes = new int[numBlack];
+
+        int whiteW = 30, whiteH = 180;
+        int blackW = 18, blackH = 110;
+
+        int x = 10;
+        int wi = 0, bi = 0;
+
+        int[] whiteOffsets = {0, 2, 4, 5, 7, 9, 11};
+        int[] blackOffsets = {1, 3, 6, 8, 10};
+
+        for (int oct = 0; oct < NUM_OCTAVES; oct++) {
+
+            for (int i = 0; i < whiteOffsets.length; i++) {
+                whiteKeys[wi] = new Rectangle(x, 50, whiteW, whiteH);
+                whiteKeyNotes[wi] = 60 + oct * 12 + whiteOffsets[i];
+                wi++;
+                x += whiteW;
+            }
+
+            int baseX = 10 + oct * WHITE_PER_OCT * whiteW;
+            int[] blackXOffsets = {
+                    whiteW - blackW / 2,
+                    2 * whiteW - blackW / 2,
+                    4 * whiteW - blackW / 2,
+                    5 * whiteW - blackW / 2,
+                    6 * whiteW - blackW / 2
+            };
+
+            for (int i = 0; i < blackOffsets.length; i++) {
+                blackKeys[bi] = new Rectangle(
+                        baseX + blackXOffsets[i],
+                        50,
+                        blackW,
+                        blackH
+                );
+                blackKeyNotes[bi] = 60 + oct * 12 + blackOffsets[i];
+                bi++;
+            }
+        }
+    }
+
+    private int getNoteAtPoint(Point p) {
+        for (int i = 0; i < blackKeys.length; i++)
+            if (blackKeys[i].contains(p))
+                return blackKeyNotes[i];
+
+        for (int i = 0; i < whiteKeys.length; i++)
+            if (whiteKeys[i].contains(p))
+                return whiteKeyNotes[i];
+
+        return -1;
+    }
+
+    private void playNote(int note) {
+        if (channel != null && note >= 0 && note <= 127)
+            channel.noteOn(note, 90);
+    }
+
+    private void stopNote(int note) {
+        if (channel != null && note >= 0 && note <= 127)
+            channel.noteOff(note);
+    }
+
+    @Override
+    protected void paintComponent(Graphics g) {
+        super.paintComponent(g);
+
+        g.setColor(Color.WHITE);
+        for (Rectangle r : whiteKeys)
+            g.fillRect(r.x, r.y, r.width, r.height);
+
+        g.setColor(Color.BLACK);
+        for (Rectangle r : whiteKeys)
+            g.drawRect(r.x, r.y, r.width, r.height);
+
+        g.setColor(Color.BLACK);
+        for (Rectangle r : blackKeys)
+            g.fillRect(r.x, r.y, r.width, r.height);
+    }
+
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+
+            Q3SolutionFourOctavePiano piano = new Q3SolutionFourOctavePiano();
+
+
+            JFrame frame = new JFrame("4-Octave Piano with Octave Shift");
+            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            frame.setLayout(new BorderLayout());
+            frame.add(piano, BorderLayout.CENTER);
+            frame.pack();
+            frame.setLocationRelativeTo(null);
+            frame.setVisible(true);
+        });
+    }
+}
