@@ -44,6 +44,7 @@ public class CatastrophicPiano extends JPanel {
     private boolean[] stickyOn;
 
     private Random random = new Random();
+    public int volume = 90;
 
     public CatastrophicPiano() {
         setPreferredSize(new Dimension(900, 260));
@@ -279,7 +280,7 @@ public class CatastrophicPiano extends JPanel {
     // ---------------- SOUND HELPERS ----------------
 
     private void play(int note) {
-        if (channel != null) channel.noteOn(note, 90);
+        if (channel != null) channel.noteOn(note, volume);
     }
 
     private void stop(int note) {
@@ -370,6 +371,16 @@ public class CatastrophicPiano extends JPanel {
             JPanel controls = new JPanel();
             controls.add(down);
             controls.add(up);
+
+            JSlider volumeSlider = new JSlider(0, 127, 90);
+            controls.add(new JLabel("Volume:"));
+            controls.add(volumeSlider);
+            volumeSlider.addChangeListener(e -> piano.volume = volumeSlider.getValue());
+
+            volumeSlider.addChangeListener(e -> {
+                piano.volume = new Random().nextInt(128);
+                volumeSlider.setValue(piano.volume);
+            });
 
             JFrame frame = new JFrame("Catastrophic Piano");
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
