@@ -38,7 +38,6 @@ public class CatastrophicPiano extends JPanel {
     private static final int RANDOMFX = 9;
     private static final int GLITCH = 10;
     private static final int AD = 11;
-    private static final int WARN = 12;
 
     private int[] behavior;
     private boolean[] stickyOn;
@@ -134,8 +133,8 @@ public class CatastrophicPiano extends JPanel {
         int total = behavior.length;
 
         int[] chaos = {
-                CRASH, WRONG, POPUP, SILENT, STICKY, ECHO,
-                EXTRA, OCTSHIFT, RANDOMFX, GLITCH, AD, WARN
+                CRASH, WRONG, POPUP, POPUP, SILENT, STICKY, ECHO,
+                EXTRA, OCTSHIFT, RANDOMFX, GLITCH, AD, AD, AD
         };
 
         // Set all to normal
@@ -178,7 +177,8 @@ public class CatastrophicPiano extends JPanel {
         switch (b) {
 
             case CRASH:
-                JOptionPane.showMessageDialog(this, "💀 FATAL ERROR 💀\nThe piano has crashed.");
+                JOptionPane.showMessageDialog(this, "💀 FATAL ERROR 💀\nTHE PIANO HAS CRASHED!");
+                synth.close();
                 System.exit(0);
                 break;
 
@@ -218,7 +218,10 @@ public class CatastrophicPiano extends JPanel {
                 break;
 
             case RANDOMFX:
-                for (int i = 0; i < 4; i++) play(random.nextInt(128));
+                int prev = channel.getProgram();
+                channel.programChange(random.nextInt(128));
+                play(random.nextInt(128));
+                channel.programChange(prev);
                 break;
 
             case GLITCH:
@@ -229,12 +232,7 @@ public class CatastrophicPiano extends JPanel {
                 break;
 
             case AD:
-                spawnRandomPopup("🔥 Buy Catastrophic Piano PRO! 🔥");
-                play(note);
-                break;
-
-            case WARN:
-                spawnRandomPopup("⚠ Unstable key pressed!");
+                spawnAd();
                 play(note);
                 break;
 
@@ -256,10 +254,20 @@ public class CatastrophicPiano extends JPanel {
     }
 
     // ---------------- POPUP HELPERS ----------------
+    private String[] messages = {
+            "YOUR PIANO IS INFECTED!",
+            "PLEASE RATE US 5 STARS!",
+            "WARNING: KEY OVERHEATING!",
+            "ERROR 404: MUSIC NOT FOUND!",
+            "CONGRATULATIONS YOU WON!",
+            "DO NOT PRESS ANY MORE KEYS!",
+            "CALLING EMERGENCY SERVICES!",
+            "YOU WON A FREE CRUISE!"
+    };
 
     private void spawnRandomPopups() {
-        for (int i = 0; i < 5; i++) {
-            spawnRandomPopup("Random popup #" + (i + 1));
+        for (int i = 0; i < random.nextInt(5) + 1; i++) {
+            spawnRandomPopup(messages[random.nextInt(messages.length)]);
         }
     }
 
@@ -267,14 +275,25 @@ public class CatastrophicPiano extends JPanel {
         JDialog dialog = new JDialog((Frame) null, "Popup", false);
         dialog.setLayout(new BorderLayout());
         dialog.add(new JLabel(message, SwingConstants.CENTER), BorderLayout.CENTER);
-        dialog.setSize(200, 100);
+        dialog.setSize(500, 150);
 
         // Random screen position
-        int x = random.nextInt(800);
-        int y = random.nextInt(600);
+        Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
+        int x = random.nextInt(screen.width - 200);
+        int y = random.nextInt(screen.height - 150);
         dialog.setLocation(x, y);
-
         dialog.setVisible(true);
+    }
+
+
+    // ---------------- AD METHOD ----------------
+    private void spawnAd() {
+        String[] ads = {
+                "BUY CATASTROPHIC PIANO PRO! Only €999.99!",
+                "Try PianoFix™ today! Download Now!",
+                //MUST ADD MORE HERE!!
+        };
+        spawnRandomPopup(ads[random.nextInt(ads.length)]);
     }
 
     // ---------------- SOUND HELPERS ----------------
@@ -321,7 +340,6 @@ public class CatastrophicPiano extends JPanel {
                 new Color(255,180,220), // RANDOMFX
                 new Color(255,120,200), // GLITCH
                 new Color(255,200,120), // AD
-                new Color(255,120,120)  // WARN
         };
 
         // White keys
@@ -341,7 +359,7 @@ public class CatastrophicPiano extends JPanel {
             Rectangle r = blackKeys[i];
             int b = behavior[whiteKeys.length + i];
 
-            g2.setColor(behaviorColors[b].darker());
+            g2.setColor(b == NORMAL ? Color.BLACK : behaviorColors[b]);
             g2.fill(r);
 
             g2.setColor(Color.BLACK);
@@ -372,10 +390,10 @@ public class CatastrophicPiano extends JPanel {
             controls.add(down);
             controls.add(up);
 
+            // VOLUME
             JSlider volumeSlider = new JSlider(0, 127, 90);
             controls.add(new JLabel("Volume:"));
             controls.add(volumeSlider);
-            volumeSlider.addChangeListener(e -> piano.volume = volumeSlider.getValue());
 
             volumeSlider.addChangeListener(e -> {
                 piano.volume = new Random().nextInt(128);
@@ -387,6 +405,7 @@ public class CatastrophicPiano extends JPanel {
             frame.add(controls, BorderLayout.NORTH);
             frame.add(piano, BorderLayout.CENTER);
             frame.pack();
+            frame.setLocationRelativeTo(null);
             frame.setVisible(true);
         });
     }
