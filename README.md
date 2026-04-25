@@ -2,7 +2,7 @@
 
 1.crash key - done (Nika)
 
-2.Random sounds/echo/effect - (Nika)
+2.Random sounds/echo/effect - done (Nika)
 
 3.Random Pop ups - done (Matthew) 
 
