@@ -10,9 +10,9 @@
 
 5.Terrible volume control slider - done (Nika)
 
-6.Help button - (Matthew)
+6.Help button - done (Matthew)
 
-7.Sticky key - (Matthew)
+7.Sticky key - done (Matthew)
 
 8.Volume diff - (Mark)
 
@@ -20,7 +20,7 @@
 
 10.Wrong note - (Mark)
 
-11.No sound - (Matthew)
+11.No sound - done (Matthew)
 
 12.Pitch Choas Lever - (Mark)
 
